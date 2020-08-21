@@ -88,26 +88,26 @@ async def auto_remind():
         await asyncio.sleep(60)
 
 
-async def weather():
+async def auto_weather():
     while not bot.is_closed():   
-        if timedelta(hours=17) == timedelta(hours=datetime.datetime.now().time().hour):
+        if timedelta(hours=15) == timedelta(hours=datetime.datetime.now().time().hour):
             weather_array = []        
-            weather_array = weather_calc()
-            print(weather_array)
+            weather_array = weather_calc()         
+            
             weather = discord.Embed(
                 title = 'Hello there! Pogoda na dziś:',
                 colour = discord.Color.blue()
             )        
             
-            weather.add_field(name = 'rano', value = '{:.1f}\n{}'.format(weather_array[0], weather_array[3]), inline = True)
-            weather.add_field(name = 'po południu', value = '{:.1f}\n{}'.format(weather_array[1], weather_array[4]), inline = True)
-            weather.add_field(name = 'w nocy', value = '{:.1f}\n{}'.format(weather_array[2], weather_array[5]), inline = True)                            
+            weather.add_field(name = 'rano', value = '{:.1f}°C\n{}'.format(weather_array[0], weather_array[3]), inline = True)
+            weather.add_field(name = 'po południu', value = '{:.1f}°C\n{}'.format(weather_array[1], weather_array[4]), inline = True)
+            weather.add_field(name = 'w nocy', value = '{:.1f}°C\n{}'.format(weather_array[2], weather_array[5]), inline = True)                            
             weather.set_footer(text='GLHF! {}'.format(random.choice(czak_reactions)))
 
             for guild in bot.guilds:
                 if str(guild) == "czakowy 2":
                     await guild.channels[2].send(embed = weather)                
-        await asyncio.sleep(60*60)
+        await asyncio.sleep(2*1)
 
 
 def weather_calc():
@@ -117,37 +117,67 @@ def weather_calc():
     
     temperatures = []
     description = []
-    desc_morning = []
-    desc_evening = []
-    desc_night = []
+    description_morning = []
+    description_evening = []
+    description_night = []
     bezchmurnie = 'bezchmurnie'
     for i in range(8):
         temperatures.append(data['list'][i]['main']['temp'])
         description.append(data['list'][0]['weather'][0]['description'])
-    
-    
-    #if len(description) > 1 and bezchmurnie in description:
-    #    description.remove(bezchmurnie)
     
     mean_temp_morning = statistics.mean(temperatures[0:3])
     mean_temp_evening = statistics.mean(temperatures[3:6])
     mean_temp_night = statistics.mean(temperatures[6:8])
 
     for i in description[0:3]:
-        if i not in desc_morning:
-            desc_morning.append(i)
+        if i not in description_morning:
+            description_morning.append(i)
+    if len(description_morning) > 1 and bezchmurnie in description_morning:
+        description_morning.remove(bezchmurnie)
 
     for i in description[3:6]:
-        if i not in desc_evening:
-            desc_evening.append(i)
+        if i not in description_evening:
+            description_evening.append(i)
+    if len(description_evening) > 1 and bezchmurnie in description_evening:
+        description_evening.remove(bezchmurnie)
 
     for i in description[6:8]:
-        if i not in desc_night:
-            desc_night.append(i)    
-    s=','
-    s = s.join(desc_morning)
-    return mean_temp_morning, mean_temp_evening, mean_temp_night, s, desc_evening, desc_night
+        if i not in description_night:
+            description_night.append(i)
+    if len(description_night) > 1 and bezchmurnie in description_night:
+        description_night.remove(bezchmurnie)    
 
+    desc_morning=','
+    desc_morning = desc_morning.join(description_morning)
+
+    desc_evening=','
+    desc_evening = desc_evening.join(description_evening)
+
+    desc_night=','
+    desc_night = desc_night.join(description_night)
+    
+    return mean_temp_morning, mean_temp_evening, mean_temp_night, desc_morning, desc_evening, desc_night
+
+
+@bot.command()
+async def pogoda(ctx, city='Warszawa'):
+
+    url = 'https://api.openweathermap.org/data/2.5/weather?q={}&appid=31184ecca6bda026696765c1ae855fc0&units=metric&lang=pl'.format(city)
+    res = requests.get(url)
+    data = res.json()
+    try:
+        weather = discord.Embed(
+                    title = 'Aktualna pogoda w {}'.format(city),
+                    colour = discord.Color.blue()
+                )        
+                
+        weather.add_field(name = 'temperatura', value = '{:.1f}°C'.format(data['main']['temp']), inline = True)
+        weather.add_field(name = 'opis', value = '{}'.format(data['weather'][0]['description']), inline = True)
+        weather.add_field(name = 'wiatr', value = '{:.1f} m/s'.format(data['wind']['speed']), inline = True)
+    except KeyError:
+        await ctx.send("co Ty piszesz gościu, nie ma takiego miasta")
+    else:
+        await ctx.send(embed = weather)
 
 # COMMANDS
 @bot.command()
